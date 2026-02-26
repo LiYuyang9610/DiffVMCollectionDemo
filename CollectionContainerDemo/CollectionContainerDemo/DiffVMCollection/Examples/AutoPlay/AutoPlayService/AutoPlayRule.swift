@@ -106,6 +106,25 @@ struct RightScrollRule: AutoPlayRule {
     }
 }
 
+struct HorizontalCenterPlayRule: AutoPlayRule {
+    func shouldApply(basedOn situation: AutoPlayContainerSituation) -> Bool {
+        true
+    }
+    
+    func evaluate(basedOn situation: AutoPlayContainerSituation) -> AutoPlayRuleAction {
+        let sortedItems = situation.visibleItems.sorted { $0.indexPath < $1.indexPath }
+        let triggerLineLenght = situation.containerSize.width / 2 + situation.contentOffset.width
+        guard let targetItem = sortedItems.min(by: { left, right in
+            let leftCenterX = left.frame.minX + left.frame.width / 2
+            let rightCenterX = right.frame.minX + right.frame.width / 2
+            return abs(leftCenterX - triggerLineLenght) < abs(rightCenterX - triggerLineLenght)
+        }) else {
+            return .continueProcess
+        }
+        return .startPlayItem(AutoPlayItemInfo(indexPath: targetItem.indexPath))
+    }
+}
+
 struct EndRule: AutoPlayRule {
     func shouldApply(basedOn situation: AutoPlayContainerSituation) -> Bool {
         true

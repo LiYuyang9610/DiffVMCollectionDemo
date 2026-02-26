@@ -39,6 +39,7 @@ struct AutoPlayContainerSituation {
     let contentOffset: CGSizeWrapper
     let scrollDirection: ScrollGestureDirection
     let visibleItems: [AutoPlayVisibleItemInfo]
+    let containerSize: CGSizeWrapper
 }
 
 enum AutoPlayRuleAction {

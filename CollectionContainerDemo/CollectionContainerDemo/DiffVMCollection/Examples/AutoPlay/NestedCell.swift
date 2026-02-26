@@ -45,8 +45,7 @@ class NestedCell: UICollectionViewCell, DiffVMCellProtocol {
         triggerLine.snp.makeConstraints { make in
             make.height.equalToSuperview().dividedBy(2)
             make.width.equalTo(3)
-            make.leading.equalToSuperview().inset(200)
-            make.top.equalToSuperview()
+            make.centerX.top.equalToSuperview()
         }
     }
     
@@ -58,6 +57,12 @@ class NestedCell: UICollectionViewCell, DiffVMCellProtocol {
     override func prepareForReuse() {
         super.prepareForReuse()
         cancellables = []
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let inset = UIEdgeInsets(top: .zero, left: bounds.width / 2, bottom: .zero, right: bounds.width / 2)
+        collectionContainer.collectionView.contentInset = inset
     }
     
     func preferredSize(for viewModel: NestedCellViewModel, within containerSize: CGSize) -> CGSize {
@@ -75,6 +80,10 @@ class NestedCell: UICollectionViewCell, DiffVMCellProtocol {
                 return AutoPlayVisibleItemInfo(indexPath: IndexPathWrapper(indexPath), frame: CGRectWrapper(cell.frame))
             }
         }
+        viewModel.getService(for: AutoPlayService.self)?.containerSizeGetter = { [weak self] in
+            guard let self else { return .zero }
+            return CGSizeWrapper(videoCollectionView.bounds.size)
+        }
         viewModel.getService(for: AutoPlayService.self)?.playingItemShouldChange.sink { [weak viewModel] playItemsInfo in
             if let previousInfo = playItemsInfo.previousInfo {
                 viewModel?.notifyChildren(for: VideoCellHandler.self) { $0.stop(at: previousInfo.indexPath) }
@@ -90,7 +99,7 @@ class NestedCell: UICollectionViewCell, DiffVMCellProtocol {
             if viewModel.currentPlaying {
                 let horizontalOffset = contentOffset.x
                 let verticalOffset = contentOffset.y
-                let actualContentOffset = CGSizeWrapper(width: horizontalOffset + videoCollectionView.contentInset.left + videoCollectionView.adjustedContentInset.left, height: verticalOffset + videoCollectionView.contentInset.top + videoCollectionView.adjustedContentInset.top)
+                let actualContentOffset = CGSizeWrapper(width: horizontalOffset, height: verticalOffset + videoCollectionView.contentInset.top + videoCollectionView.adjustedContentInset.top)
                 viewModel.getService(for: AutoPlayService.self)?.contentScrolling(to: actualContentOffset)
             } else {
                 viewModel.parentViewModel?.getService(for: AutoPlayService.self)?.manuallyPlayItem(at: indexPath)

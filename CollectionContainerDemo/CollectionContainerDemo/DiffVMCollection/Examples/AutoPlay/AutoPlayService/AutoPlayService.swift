@@ -10,6 +10,7 @@ import Combine
 
 protocol AutoPlayService: AnyObject {
     var visibleItemsGetter: (() -> [AutoPlayVisibleItemInfo])? { get set }
+    var containerSizeGetter: (() -> CGSizeWrapper)? { get set }
     var playingItemShouldChange: AnyPublisher<AutoPlayItemsInfo, Never> { get }
     var playingInfo: AutoPlayItemsInfo { get }
     func contentScrolling(to contentOffset: CGSizeWrapper)
@@ -23,6 +24,8 @@ class AutoPlayServiceImpl: AutoPlayService {
     private var playRules: [AutoPlayRule] = []
     
     var visibleItemsGetter: (() -> [AutoPlayVisibleItemInfo])?
+    
+    var containerSizeGetter: (() -> CGSizeWrapper)?
     
     private let currentPlayingVideoState: CurrentValueSubject<AutoPlayItemsInfo, Never> = .init(AutoPlayItemsInfo(previousInfo: nil, currentInfo: nil))
     
@@ -48,7 +51,8 @@ class AutoPlayServiceImpl: AutoPlayService {
             scrollDirection.insert(contentOffset.width > recordedContentOffset.width ? .left : .right)
         }
         let visibleItems = visibleItemsGetter?() ?? []
-        let situation = AutoPlayContainerSituation(contentOffset: contentOffset, scrollDirection: scrollDirection, visibleItems: visibleItems)
+        let containerSize = containerSizeGetter?() ?? .zero
+        let situation = AutoPlayContainerSituation(contentOffset: contentOffset, scrollDirection: scrollDirection, visibleItems: visibleItems, containerSize: containerSize)
         applyRules(for: playRules, basedOn: situation) { itemsInfo in
             guard itemsInfo != currentPlayingVideoState.value else { return }
             guard itemsInfo.currentInfo != itemsInfo.previousInfo else { return } // 防止多次调用同一个视频的pause/play

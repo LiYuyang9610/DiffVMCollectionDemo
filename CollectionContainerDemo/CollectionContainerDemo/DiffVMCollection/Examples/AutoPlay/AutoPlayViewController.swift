@@ -64,6 +64,10 @@ class AutoPlayViewController: UIViewController {
                 return AutoPlayVisibleItemInfo(indexPath: IndexPathWrapper(indexPath), frame: CGRectWrapper(cell.frame))
             }
         }
+        autoPlayService.containerSizeGetter = { [weak self] in
+            guard let self else { return .zero }
+            return CGSizeWrapper(videoCollectionView.bounds.size)
+        }
         autoPlayService.playingItemShouldChange.sink { [weak self] playItemsInfo in
             guard let self else { return }
             if let previousInfo = playItemsInfo.previousInfo {
@@ -87,11 +91,9 @@ class AutoPlayViewController: UIViewController {
             make.edges.equalToSuperview()
         }
 
-        let sideTriggerLineLength: CGFloat = 200
         let nestedCellViewModel = NestedCellViewModel(itemHeight: 150)
         let horizontalAutoPlayService = AutoPlayServiceImpl(playRules: [
-            LeftScrollRule(triggerLineLength: sideTriggerLineLength),
-            RightScrollRule(triggerLineLength: sideTriggerLineLength),
+            HorizontalCenterPlayRule(),
             EndRule()
         ])
         nestedCellViewModel.registerService(for: AutoPlayService.self, using: horizontalAutoPlayService)

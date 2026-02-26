@@ -34,6 +34,9 @@ extension IndexPath {
 }
 
 struct CGSizeWrapper: Hashable {
+    
+    static let zero = CGSizeWrapper(.zero)
+    
     let width: Double
     let height: Double
     
