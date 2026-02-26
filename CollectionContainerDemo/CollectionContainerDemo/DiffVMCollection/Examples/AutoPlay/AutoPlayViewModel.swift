@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Combine
 
 class AutoPlayViewModel: ViewModelNode {
     let servicesContainer: ServicesContainer = .init()
@@ -17,6 +18,12 @@ class AutoPlayViewModel: ViewModelNode {
     }
     
     private let collectionViewModel: DiffVMCollectionViewModel
+    
+    private let videoFinishEvent: PassthroughSubject<IndexPathWrapper, Never> = .init()
+    
+    var videoFinish: AnyPublisher<IndexPathWrapper, Never> {
+        videoFinishEvent.eraseToAnyPublisher()
+    }
     
     init(collectionViewModel: DiffVMCollectionViewModel) {
         self.collectionViewModel = collectionViewModel
@@ -42,10 +49,16 @@ extension AutoPlayViewModel: DiffVMEventHandler {
 
 protocol AutoPlayCollectionHandler {
     func currentIndexPath<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType) -> IndexPathWrapper?
+    func videoDidFinish<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType)
 }
 
 extension AutoPlayViewModel: AutoPlayCollectionHandler {
     func currentIndexPath<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType) -> IndexPathWrapper? {
         collectionViewModel.indexPathForItem(of: itemViewModel)
+    }
+    
+    func videoDidFinish<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType) {
+        guard let indexPath = collectionViewModel.indexPathForItem(of: itemViewModel) else { return }
+        videoFinishEvent.send(indexPath)
     }
 }

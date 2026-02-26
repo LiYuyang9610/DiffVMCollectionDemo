@@ -85,6 +85,9 @@ class AutoPlayViewController: UIViewController {
             let actualContentOffset = CGSizeWrapper(width: contentOffset.x, height: verticalOffset + videoCollectionView.contentInset.top + videoCollectionView.adjustedContentInset.top)
             autoPlayService.contentScrolling(to: actualContentOffset)
         }.store(in: &cancellables)
+        viewModel.videoFinish.sink { indexPath in
+            autoPlayService.manuallyPlayItem(at: indexPath)
+        }.store(in: &cancellables)
         viewModel.registerService(for: AutoPlayService.self, using: autoPlayService)
         view.addSubview(videoCollectionView)
         videoCollectionView.snp.makeConstraints { make in

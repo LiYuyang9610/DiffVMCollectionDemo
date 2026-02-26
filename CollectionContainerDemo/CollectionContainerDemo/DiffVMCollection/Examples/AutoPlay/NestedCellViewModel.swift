@@ -34,6 +34,12 @@ class NestedCellViewModel: ViewModelNode, Hashable {
         findParentValue(for: AutoPlayCollectionHandler.self) { $0.currentIndexPath(for: self) }
     }
     
+    private let videoFinishEvent: PassthroughSubject<IndexPathWrapper, Never> = .init()
+    
+    var videoFinish: AnyPublisher<IndexPathWrapper, Never> {
+        videoFinishEvent.eraseToAnyPublisher()
+    }
+    
     init(itemHeight: CGFloat) {
         self.itemHeight = itemHeight
     }
@@ -81,5 +87,10 @@ extension NestedCellViewModel: VideoCellHandler {
 extension NestedCellViewModel: AutoPlayCollectionHandler {
     func currentIndexPath<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType) -> IndexPathWrapper? {
         collectionViewModel?.indexPathForItem(of: itemViewModel)
+    }
+    
+    func videoDidFinish<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType) {
+        guard let indexPath = collectionViewModel?.indexPathForItem(of: itemViewModel) else { return }
+        videoFinishEvent.send(indexPath)
     }
 }

@@ -88,6 +88,10 @@ class VideoCellViewModel: ViewModelNode, Hashable {
     func hash(into hasher: inout Hasher) {
         hasher.combine(uuid)
     }
+    
+    func playerFinishPlay() {
+        notifyParent(for: AutoPlayCollectionHandler.self) { $0.videoDidFinish(for: self) }
+    }
 }
 
 /// A protocol defining the core interactive operations and state available for a video cell.

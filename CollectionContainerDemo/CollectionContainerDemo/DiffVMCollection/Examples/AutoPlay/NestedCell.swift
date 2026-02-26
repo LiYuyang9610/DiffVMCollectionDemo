@@ -92,6 +92,11 @@ class NestedCell: UICollectionViewCell, DiffVMCellProtocol {
                 viewModel?.notifyChildren(for: VideoCellHandler.self) { $0.play(at: currentInfo.indexPath) }
             }
         }.store(in: &cancellables)
+        
+        viewModel.videoFinish.sink { [weak viewModel] indexPath in
+            guard let viewModel else { return }
+            viewModel.getService(for: AutoPlayService.self)?.manuallyPlayItem(at: indexPath)
+        }.store(in: &cancellables)
 
         videoCollectionView.publisher(for: \.contentOffset).sink { [weak self] contentOffset in
             guard let self else { return }

@@ -18,6 +18,8 @@ class VideoCell: UICollectionViewCell, DiffVMCellProtocol {
         let label = UILabel()
         label.textColor = .black
         label.textAlignment = .center
+        label.minimumScaleFactor = 0.3
+        label.adjustsFontSizeToFitWidth = true
         return label
     }()
     
@@ -25,23 +27,42 @@ class VideoCell: UICollectionViewCell, DiffVMCellProtocol {
         let label = UILabel()
         label.textColor = .black
         label.textAlignment = .center
+        label.minimumScaleFactor = 0.3
+        label.adjustsFontSizeToFitWidth = true
+        return label
+    }()
+    
+    let progressLabel: UILabel = {
+        let label = UILabel()
+        label.textColor = .black
+        label.textAlignment = .center
+        label.minimumScaleFactor = 0.3
+        label.adjustsFontSizeToFitWidth = true
         return label
     }()
     
     private var cancellables = Set<AnyCancellable>()
     
+    let player = DemoPlayer(totalProgress: 5)
+    
     override init(frame: CGRect) {
         super.init(frame: .zero)
         contentView.addSubview(playingStateLabel)
         contentView.addSubview(selectingStateLabel)
+        contentView.addSubview(progressLabel)
         playingStateLabel.snp.makeConstraints { make in
             make.center.equalToSuperview()
-            make.width.equalTo(100)
+            make.width.lessThanOrEqualToSuperview()
         }
         selectingStateLabel.snp.makeConstraints { make in
             make.top.equalTo(playingStateLabel.snp.bottom)
             make.centerX.equalToSuperview()
-            make.width.equalTo(100)
+            make.width.lessThanOrEqualToSuperview()
+        }
+        progressLabel.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.top.equalTo(selectingStateLabel.snp.bottom)
+            make.width.lessThanOrEqualToSuperview()
         }
         contentView.backgroundColor = .green
     }
@@ -53,6 +74,7 @@ class VideoCell: UICollectionViewCell, DiffVMCellProtocol {
     
     override func prepareForReuse() {
         super.prepareForReuse()
+        player.pause()
         cancellables = []
     }
     
@@ -78,5 +100,87 @@ class VideoCell: UICollectionViewCell, DiffVMCellProtocol {
         viewModel.currentPlayingState.map { playing in
             playing ? UIColor.red : .green
         }.assign(to: \.backgroundColor, on: contentView).store(in: &cancellables)
+        viewModel.currentPlayingState.sink { [weak self] playing in
+            guard let self else { return }
+            if playing {
+                player.play()
+            } else {
+                player.pause()
+            }
+        }.store(in: &cancellables)
+        player.currentProgress.map { progress in
+            "progress: \(progress)"
+        }.assign(to: \.text, on: progressLabel).store(in: &cancellables)
+        player.completionEvent.sink { _ in
+            viewModel.playerFinishPlay()
+        }.store(in: &cancellables)
+    }
+}
+
+class DemoPlayer {
+    let currentProgress: CurrentValueSubject<Int, Never> = .init(.zero)
+    
+    let completionEvent: PassthroughSubject<Void, Never> = .init()
+    
+    let totalProgress: Int
+    
+    private var timerCancellable: AnyCancellable?
+    
+    init(totalProgress: Int) {
+        self.totalProgress = totalProgress
+    }
+    
+    func play() {
+        guard timerCancellable == nil else { return }
+        
+        if currentProgress.value >= totalProgress {
+            currentProgress.send(.zero)
+        }
+        
+        timerCancellable = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect().sink(receiveValue: { [weak self] _ in
+            guard let self else { return }
+            if currentProgress.value >= totalProgress {
+                pause()
+                completionEvent.send(())
+            } else {
+                currentProgress.send(currentProgress.value + 1)
+            }
+        })
+    }
+    
+    func pause() {
+        timerCancellable?.cancel()
+        timerCancellable = nil
+    }
+}
+
+#Preview(traits: .defaultLayout) {
+    let cell = VideoCell(frame: .zero)
+    let viewModel = VideoCellViewModel(style: .normal, itemSpacing: 10)
+    viewModel.parentViewModel = mockedViewModel
+    cell.bind(to: viewModel)
+    viewModel.select()
+    return cell
+}
+
+private let mockedViewModel = MockedViewModel()
+
+private class MockedViewModel: ViewModelNode {
+    let servicesContainer: ServicesContainer = .init()
+    
+    var parentViewModel: (any ViewModelNode)?
+    
+    func transform() {
+        
+    }
+}
+
+extension MockedViewModel: AutoPlayCollectionHandler {    
+    func currentIndexPath<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType) -> IndexPathWrapper? {
+        IndexPathWrapper(IndexPath(item: .zero, section: .zero))
+    }
+    
+    func videoDidFinish<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType) {
+        
     }
 }
