@@ -91,6 +91,14 @@ protocol ViewModelNode: AnyObject {
     /// - Returns: The matched value, or `nil` if no capable child is found.
     func findChildrenValue<ValueType, ChildType>(for protocolType: ChildType.Type, _ action: (ChildType) -> ValueType?) -> ValueType?
     
+    /// Checks only the immediate children to find the first one matching the type that
+    /// can fulfill the request through the closure.
+    /// - Parameters:
+    ///   - protocolType: The expected type of the child node.
+    ///   - action: A closure executed on matching children that returns a value if successful.
+    /// - Returns: The matched value, or `nil` if no capable immediate child is found.
+    func findDirectChildrenValue<ValueType, ChildType>(for protocolType: ChildType.Type, _ action: (ChildType) -> ValueType?) -> ValueType?
+    
     /// Climbs up the parent tree and executes a closure on the *first* ancestor that matches the given type.
     /// - Parameters:
     ///   - protocolType: The expected type of the parent node.
@@ -122,6 +130,8 @@ protocol ViewModelNode: AnyObject {
     ///   - protocolType: The expected type of the child node.
     ///   - action: The action to perform on matching children.
     func notifyChildrenUntilShoot<ChildType>(for protocolType: ChildType.Type, _ action: (ChildType) -> Void)
+    
+    func collectChildrenKeyedValues<KeyType: Hashable, ValueType, ChildType>(for protocolType: ChildType.Type, _ action: (ChildType) -> (KeyType, ValueType)?) -> [KeyType: ValueType]
 }
 
 // MARK: - Default Implementations
@@ -164,12 +174,6 @@ extension ViewModelNode {
         return nil
     }
     
-    /// Checks only the immediate children to find the first one matching the type that
-    /// can fulfill the request through the closure.
-    /// - Parameters:
-    ///   - protocolType: The expected type of the child node.
-    ///   - action: A closure executed on matching children that returns a value if successful.
-    /// - Returns: The matched value, or `nil` if no capable immediate child is found.
     func findDirectChildrenValue<ValueType, ChildType>(for protocolType: ChildType.Type, _ action: (ChildType) -> ValueType?) -> ValueType? {
         for childViewModel in childrenViewModels {
             guard let candidateChildViewModel = childViewModel as? ChildType else { continue }
@@ -226,5 +230,26 @@ extension ViewModelNode {
             guard !foundMatch else { return }
             currentLevel = currentLevel.flatMap { $0.childrenViewModels }
         }
+    }
+    
+    func collectChildrenKeyedValues<KeyType: Hashable, ValueType, ChildType>(for protocolType: ChildType.Type, _ action: (ChildType) -> (KeyType, ValueType)?) -> [KeyType: ValueType] {
+        var currentLevel = childrenViewModels
+        while !currentLevel.isEmpty {
+            let resultList: [(KeyType, ValueType)] = currentLevel.compactMap { child in
+                guard let childViewModel = child as? ChildType else { return nil }
+                guard let (key, value) = action(childViewModel) else { return nil }
+                return (key, value)
+            }
+            let result = resultList.reduce(into: [KeyType: ValueType]()) { partialResult, tuple in
+                let (key, value) = tuple
+                partialResult[key] = value
+            }
+            guard !result.isEmpty else {
+                currentLevel = currentLevel.flatMap { $0.childrenViewModels }
+                continue
+            }
+            return result
+        }
+        return [:]
     }
 }

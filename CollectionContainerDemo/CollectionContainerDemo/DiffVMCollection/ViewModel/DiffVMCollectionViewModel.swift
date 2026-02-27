@@ -23,7 +23,7 @@ class DiffVMCollectionViewModel: ViewModelNode {
         
     }
     
-    func indexPathForItem<DiffVMType: ViewModelNode & Hashable>(of viewModel: DiffVMType) -> IndexPathWrapper? {
+    func indexPathForItem<DiffVMType: ViewModelNode>(of viewModel: DiffVMType) -> IndexPathWrapper? {
         findDirectChildrenValue(for: DiffVMSectionHandler.self) { sectionViewModel in
             guard let itemIndex = sectionViewModel.itemIndex(for: viewModel) else { return nil }
             guard let sectionIndex = childrenViewModels.firstIndex(where: { childViewModel in

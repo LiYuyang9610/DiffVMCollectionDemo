@@ -24,6 +24,7 @@ struct AutoPlayItemInfo: Equatable {
 struct AutoPlayVisibleItemInfo {
     let indexPath: IndexPathWrapper
     let frame: CGRectWrapper
+    let canBePlayed: Bool
 }
 
 struct AutoPlayItemsInfo: Equatable {
@@ -45,5 +46,5 @@ struct AutoPlayContainerSituation {
 enum AutoPlayRuleAction {
     case continueProcess
     case finishProcess
-    case startPlayItem(AutoPlayItemInfo)
+    case startPlayItem(AutoPlayItemInfo?)
 }

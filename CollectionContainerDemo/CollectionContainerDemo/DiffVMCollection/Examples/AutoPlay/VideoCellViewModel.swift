@@ -45,6 +45,8 @@ class VideoCellViewModel: ViewModelNode, Hashable {
     /// The spacing to apply around the cell.
     let itemSpacing: CGFloat
     
+    let canBePlayed: Bool
+    
     /// The number of items that should appear in a single row, determined by the cell's style.
     var itemNumbersInRow: Int {
         switch style {
@@ -75,9 +77,10 @@ class VideoCellViewModel: ViewModelNode, Hashable {
     /// - Parameters:
     ///   - style: The visual presentation style of the cell.
     ///   - itemSpacing: The spacing to apply around the item.
-    init(style: CellOutlook, itemSpacing: CGFloat) {
+    init(style: CellOutlook, itemSpacing: CGFloat, canBePlayed: Bool) {
         self.style = style
         self.itemSpacing = itemSpacing
+        self.canBePlayed = canBePlayed
     }
     
     /// Performs any necessary transformations or setup for the view model.
@@ -100,6 +103,8 @@ protocol VideoCellHandler: AnyObject {
     var itemId: AnyHashable { get }
     /// A boolean indicating whether the cell is currently selected.
     var selecting: Bool { get }
+    
+    var canBePlayed: Bool { get }
     
     /// Marks the cell as selected.
     func select()

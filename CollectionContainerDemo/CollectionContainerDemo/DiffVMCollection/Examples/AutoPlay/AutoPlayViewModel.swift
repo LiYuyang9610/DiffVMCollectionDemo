@@ -48,16 +48,16 @@ extension AutoPlayViewModel: DiffVMEventHandler {
 }
 
 protocol AutoPlayCollectionHandler {
-    func currentIndexPath<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType) -> IndexPathWrapper?
-    func videoDidFinish<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType)
+    func currentIndexPath<DiffVMType: ViewModelNode>(for itemViewModel: DiffVMType) -> IndexPathWrapper?
+    func videoDidFinish<DiffVMType: ViewModelNode>(for itemViewModel: DiffVMType)
 }
 
 extension AutoPlayViewModel: AutoPlayCollectionHandler {
-    func currentIndexPath<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType) -> IndexPathWrapper? {
+    func currentIndexPath<DiffVMType: ViewModelNode>(for itemViewModel: DiffVMType) -> IndexPathWrapper? {
         collectionViewModel.indexPathForItem(of: itemViewModel)
     }
     
-    func videoDidFinish<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType) {
+    func videoDidFinish<DiffVMType: ViewModelNode>(for itemViewModel: DiffVMType) {
         guard let indexPath = collectionViewModel.indexPathForItem(of: itemViewModel) else { return }
         videoFinishEvent.send(indexPath)
     }

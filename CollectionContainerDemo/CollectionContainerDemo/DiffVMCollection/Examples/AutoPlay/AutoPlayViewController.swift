@@ -59,9 +59,15 @@ class AutoPlayViewController: UIViewController {
         ])
         autoPlayService.visibleItemsGetter = { [weak self] in
             guard let self else { return [] }
+            let canBePlayedInfo = viewModel.collectChildrenKeyedValues(for: VideoCellHandler.self) { (child) -> (IndexPathWrapper, Bool)? in
+                guard let childViewModel = child as? ViewModelNode & VideoCellHandler else { return nil }
+                guard let indexPath = self.viewModel.currentIndexPath(for: childViewModel) else { return nil }
+                return (indexPath, childViewModel.canBePlayed)
+            }
             return videoCollectionView.visibleCells.compactMap { cell in
                 guard let indexPath = self.videoCollectionView.indexPath(for: cell) else { return nil }
-                return AutoPlayVisibleItemInfo(indexPath: IndexPathWrapper(indexPath), frame: CGRectWrapper(cell.frame))
+                let canBePlayed = canBePlayedInfo[IndexPathWrapper(indexPath)] ?? false
+                return AutoPlayVisibleItemInfo(indexPath: IndexPathWrapper(indexPath), frame: CGRectWrapper(cell.frame), canBePlayed: canBePlayed)
             }
         }
         autoPlayService.containerSizeGetter = { [weak self] in
@@ -94,7 +100,7 @@ class AutoPlayViewController: UIViewController {
             make.edges.equalToSuperview()
         }
 
-        let nestedCellViewModel = NestedCellViewModel(itemHeight: 150)
+        let nestedCellViewModel = NestedCellViewModel(itemHeight: 150, canBePlayed: true)
         let horizontalAutoPlayService = AutoPlayServiceImpl(playRules: [
             HorizontalCenterPlayRule(),
             EndRule()
@@ -104,8 +110,8 @@ class AutoPlayViewController: UIViewController {
         let horizontalSection = DiffVMSection(title: "horizontal", items: [horizontalItem])
         
         let normalVideoItemSpacing: CGFloat = 10
-        let items = (0..<20).map { _ in
-            AnyDiffVMItem(cellType: VideoCell.self, cellViewModel: VideoCellViewModel(style: .normal, itemSpacing: normalVideoItemSpacing))
+        let items = (0..<20).map { index in
+            AnyDiffVMItem(cellType: VideoCell.self, cellViewModel: VideoCellViewModel(style: .normal, itemSpacing: normalVideoItemSpacing, canBePlayed: index % 3 == 0))
         }
         let section = DiffVMSection(title: "videos", items: items, minimumLineSpacing: 10, minimumInteritemSpacing: normalVideoItemSpacing)
         

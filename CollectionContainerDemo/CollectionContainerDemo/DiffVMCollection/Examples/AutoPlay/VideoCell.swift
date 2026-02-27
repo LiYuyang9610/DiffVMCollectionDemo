@@ -64,7 +64,6 @@ class VideoCell: UICollectionViewCell, DiffVMCellProtocol {
             make.top.equalTo(selectingStateLabel.snp.bottom)
             make.width.lessThanOrEqualToSuperview()
         }
-        contentView.backgroundColor = .green
     }
     
     @available(*, unavailable)
@@ -88,6 +87,7 @@ class VideoCell: UICollectionViewCell, DiffVMCellProtocol {
     }
     
     func bind(to viewModel: VideoCellViewModel) {
+        contentView.backgroundColor = viewModel.canBePlayed ? .green : .gray
         viewModel.currentSelectingState.sink { [weak self] selecting in
             guard let self else { return }
             selectingStateLabel.text = selecting ? "selecting" : ""
@@ -97,8 +97,9 @@ class VideoCell: UICollectionViewCell, DiffVMCellProtocol {
             guard let currentIndexPath = viewModel.currentIndexPath else { return "" }
             return "\(currentIndexPath.item)" + (playing ? "playing" : "paused")
         }.assign(to: \.text, on: playingStateLabel).store(in: &cancellables)
-        viewModel.currentPlayingState.map { playing in
-            playing ? UIColor.red : .green
+        viewModel.currentPlayingState.map { [canBePlayed = viewModel.canBePlayed] playing in
+            guard canBePlayed else { return .gray }
+            return playing ? UIColor.red : .green
         }.assign(to: \.backgroundColor, on: contentView).store(in: &cancellables)
         viewModel.currentPlayingState.sink { [weak self] playing in
             guard let self else { return }
@@ -118,7 +119,11 @@ class VideoCell: UICollectionViewCell, DiffVMCellProtocol {
 }
 
 class DemoPlayer {
-    let currentProgress: CurrentValueSubject<Int, Never> = .init(.zero)
+    let currentProgressState: CurrentValueSubject<Int, Never> = .init(.zero)
+    
+    var currentProgress: AnyPublisher<Int, Never> {
+        currentProgressState.eraseToAnyPublisher()
+    }
     
     let completionEvent: PassthroughSubject<Void, Never> = .init()
     
@@ -133,17 +138,17 @@ class DemoPlayer {
     func play() {
         guard timerCancellable == nil else { return }
         
-        if currentProgress.value >= totalProgress {
-            currentProgress.send(.zero)
+        if currentProgressState.value >= totalProgress {
+            currentProgressState.send(.zero)
         }
         
         timerCancellable = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect().sink(receiveValue: { [weak self] _ in
             guard let self else { return }
-            if currentProgress.value >= totalProgress {
+            if currentProgressState.value >= totalProgress {
                 pause()
                 completionEvent.send(())
             } else {
-                currentProgress.send(currentProgress.value + 1)
+                currentProgressState.send(currentProgressState.value + 1)
             }
         })
     }
@@ -156,7 +161,7 @@ class DemoPlayer {
 
 #Preview(traits: .defaultLayout) {
     let cell = VideoCell(frame: .zero)
-    let viewModel = VideoCellViewModel(style: .normal, itemSpacing: 10)
+    let viewModel = VideoCellViewModel(style: .normal, itemSpacing: 10, canBePlayed: true)
     viewModel.parentViewModel = mockedViewModel
     cell.bind(to: viewModel)
     viewModel.select()
@@ -176,11 +181,11 @@ private class MockedViewModel: ViewModelNode {
 }
 
 extension MockedViewModel: AutoPlayCollectionHandler {    
-    func currentIndexPath<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType) -> IndexPathWrapper? {
+    func currentIndexPath<DiffVMType: ViewModelNode>(for itemViewModel: DiffVMType) -> IndexPathWrapper? {
         IndexPathWrapper(IndexPath(item: .zero, section: .zero))
     }
     
-    func videoDidFinish<DiffVMType: ViewModelNode & Hashable>(for itemViewModel: DiffVMType) {
+    func videoDidFinish<DiffVMType: ViewModelNode>(for itemViewModel: DiffVMType) {
         
     }
 }

@@ -73,11 +73,17 @@ class NestedCell: UICollectionViewCell, DiffVMCellProtocol {
         collectionContainer.viewModel.parentViewModel = viewModel
         viewModel.setupCollectionViewModel(with: collectionContainer.viewModel)
         
-        viewModel.getService(for: AutoPlayService.self)?.visibleItemsGetter = { [weak self] in
-            guard let self else { return [] }
+        viewModel.getService(for: AutoPlayService.self)?.visibleItemsGetter = { [weak self, weak viewModel] in
+            guard let self, let viewModel else { return [] }
+            let canBePlayedInfo = viewModel.collectChildrenKeyedValues(for: VideoCellHandler.self) { (child) -> (IndexPathWrapper, Bool)? in
+                guard let childViewModel = child as? ViewModelNode & VideoCellHandler else { return nil }
+                guard let indexPath = viewModel.currentIndexPath(for: childViewModel) else { return nil }
+                return (indexPath, childViewModel.canBePlayed)
+            }
             return videoCollectionView.visibleCells.compactMap { cell in
                 guard let indexPath = self.videoCollectionView.indexPath(for: cell) else { return nil }
-                return AutoPlayVisibleItemInfo(indexPath: IndexPathWrapper(indexPath), frame: CGRectWrapper(cell.frame))
+                let canBePlayed = canBePlayedInfo[IndexPathWrapper(indexPath)] ?? false
+                return AutoPlayVisibleItemInfo(indexPath: IndexPathWrapper(indexPath), frame: CGRectWrapper(cell.frame), canBePlayed: canBePlayed)
             }
         }
         viewModel.getService(for: AutoPlayService.self)?.containerSizeGetter = { [weak self] in
@@ -98,7 +104,11 @@ class NestedCell: UICollectionViewCell, DiffVMCellProtocol {
             viewModel.getService(for: AutoPlayService.self)?.manuallyPlayItem(at: indexPath)
         }.store(in: &cancellables)
 
-        videoCollectionView.publisher(for: \.contentOffset).sink { [weak self] contentOffset in
+        // notice this dropFirst() here
+        // when outside collection scrolling, and this nested cell runs into bind(to:)
+        // the publisher for contentOffset will be triggered automatically
+        // this is not caused by user interaction and should be ignored
+        videoCollectionView.publisher(for: \.contentOffset).dropFirst().sink { [weak self] contentOffset in
             guard let self else { return }
             guard let indexPath = viewModel.findParentValue(for: AutoPlayCollectionHandler.self, { $0.currentIndexPath(for: viewModel) }) else { return }
             if viewModel.currentPlaying {
@@ -112,8 +122,8 @@ class NestedCell: UICollectionViewCell, DiffVMCellProtocol {
         }.store(in: &cancellables)
         
         let smallVideoItemSpacing: CGFloat = 5
-        let items = (0..<10).map { _ in
-            AnyDiffVMItem(cellType: VideoCell.self, cellViewModel: VideoCellViewModel(style: .small, itemSpacing: smallVideoItemSpacing))
+        let items = (0..<10).map { index in
+            AnyDiffVMItem(cellType: VideoCell.self, cellViewModel: VideoCellViewModel(style: .small, itemSpacing: smallVideoItemSpacing, canBePlayed: index % 3 == 0))
         }
         let section = DiffVMSection(title: "videos", items: items, minimumLineSpacing: smallVideoItemSpacing)
         
