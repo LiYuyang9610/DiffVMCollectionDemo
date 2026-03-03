@@ -43,7 +43,7 @@ class VideoCell: UICollectionViewCell, DiffVMCellProtocol {
     
     private var cancellables = Set<AnyCancellable>()
     
-    let player = DemoPlayer(totalProgress: 5)
+    let player = DummyPlayer(totalProgress: 5)
     
     override init(frame: CGRect) {
         super.init(frame: .zero)
@@ -115,77 +115,5 @@ class VideoCell: UICollectionViewCell, DiffVMCellProtocol {
         player.completionEvent.sink { _ in
             viewModel.playerFinishPlay()
         }.store(in: &cancellables)
-    }
-}
-
-class DemoPlayer {
-    let currentProgressState: CurrentValueSubject<Int, Never> = .init(.zero)
-    
-    var currentProgress: AnyPublisher<Int, Never> {
-        currentProgressState.eraseToAnyPublisher()
-    }
-    
-    let completionEvent: PassthroughSubject<Void, Never> = .init()
-    
-    let totalProgress: Int
-    
-    private var timerCancellable: AnyCancellable?
-    
-    init(totalProgress: Int) {
-        self.totalProgress = totalProgress
-    }
-    
-    func play() {
-        guard timerCancellable == nil else { return }
-        
-        if currentProgressState.value >= totalProgress {
-            currentProgressState.send(.zero)
-        }
-        
-        timerCancellable = Timer.publish(every: 1.0, on: .main, in: .common).autoconnect().sink(receiveValue: { [weak self] _ in
-            guard let self else { return }
-            if currentProgressState.value >= totalProgress {
-                pause()
-                completionEvent.send(())
-            } else {
-                currentProgressState.send(currentProgressState.value + 1)
-            }
-        })
-    }
-    
-    func pause() {
-        timerCancellable?.cancel()
-        timerCancellable = nil
-    }
-}
-
-#Preview(traits: .defaultLayout) {
-    let cell = VideoCell(frame: .zero)
-    let viewModel = VideoCellViewModel(style: .normal, itemSpacing: 10, canBePlayed: true)
-    viewModel.parentViewModel = mockedViewModel
-    cell.bind(to: viewModel)
-    viewModel.select()
-    return cell
-}
-
-private let mockedViewModel = MockedViewModel()
-
-private class MockedViewModel: ViewModelNode {
-    let servicesContainer: ServicesContainer = .init()
-    
-    var parentViewModel: (any ViewModelNode)?
-    
-    func transform() {
-        
-    }
-}
-
-extension MockedViewModel: AutoPlayCollectionHandler {    
-    func currentIndexPath<DiffVMType: ViewModelNode>(for itemViewModel: DiffVMType) -> IndexPathWrapper? {
-        IndexPathWrapper(IndexPath(item: .zero, section: .zero))
-    }
-    
-    func videoDidFinish<DiffVMType: ViewModelNode>(for itemViewModel: DiffVMType) {
-        
     }
 }
